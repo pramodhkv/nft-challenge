@@ -9,7 +9,7 @@ const Pages = () => {
   return (
     <Routes location={location} key={location.pathname}>
       <Route path="/" element={<Home />} />
-      <Route path="/nft/*" element={<NFTDropPage />} />
+      <Route path="/nft/:id" element={<NFTDropPage />} />
     </Routes>
   );
 };
