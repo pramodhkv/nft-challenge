@@ -19,7 +19,7 @@ const Home = () => {
     >
       <MainNavHeader />
 
-      <div className="bg-slate-100 p-10 shadow-xl shadow-rose-400/20 mt-10 rounded-xl">
+      <div className="p-10 shadow-lg shadow-rose-400/60 mt-10 rounded-xl">
         <div className="grid space-x-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 ">
           {collections.map((collection) => (
             <NFTCard key={collection._id} collection={collection} />
