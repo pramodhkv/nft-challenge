@@ -1,20 +1,32 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAddress, useMetamask, useDisconnect } from "@thirdweb-dev/react";
-import { useFetchCollectionDetails } from "./hooks";
 import { urlFor } from "../../utils/utils";
+import { useNFTDropManager } from "./hooks";
+import { motion } from "framer-motion";
+import GradientImage from "../../components/GradientImage";
+import MainNavHeader from "../../components/MainNavHeader";
+import ToasterMessage from "../../components/ToasterMessage";
+import WalletAddress from "../../components/WalletAddress";
+import ShowLoader from "../../components/ShowLoader";
 
 const NFTDropPage = () => {
   const { id = "" } = useParams<{ id: string }>();
 
-  const { collectionDetails } = useFetchCollectionDetails(id);
-
-  const address = useAddress();
+  const loggedInAddress = useAddress() || "";
   const connectWithMetamask = useMetamask();
   const disconnect = useDisconnect();
+  const {
+    loading,
+    collectionDetails,
+    claimedNFTs,
+    totalNFTs,
+    priceWithSymbol,
+    mintNFT,
+  } = useNFTDropManager(id);
 
   const onConnectWallet = () => {
-    if (address) {
+    if (loggedInAddress) {
       disconnect();
     } else {
       connectWithMetamask();
@@ -30,74 +42,79 @@ const NFTDropPage = () => {
   }
 
   return (
-    <div className="NFTDropPage flex flex-col lg:flex-row h-screen">
-      <div className="lg:w-2/5 flex flex-col gap-3 justify-center items-center bg-gradient-to-br from-cyan-800 to-rose-500 py-2 lg:min-h-screen p-3">
-        <div className="p-2 bg-gradient-to-br from-yellow-400 to-purple-600 rounded-xl">
-          <img
-            src={urlFor(collectionDetails.previewImage).url()}
-            alt={collectionDetails.title}
-            className="rounded-xl w-44 lg:h-96 lg:w-72"
-          />
-        </div>
+    <motion.div
+      className="NFTDropPage flex flex-col lg:flex-row h-screen"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <ToasterMessage />
+      <div className="lg:w-2/5 flex flex-col gap-3 justify-center items-center bg-gradient-to-br from-cyan-800 to-rose-500 py-2 min-h-[50%] lg:min-h-screen p-3">
+        <GradientImage
+          imgSrc={urlFor(collectionDetails.previewImage).url()}
+          alt={collectionDetails.title}
+        />
 
-        <h1 className="text-3xl text-white font-bold text-center mt-2">
+        <h1 className="text-2xl text-white font-bold text-center mt-2">
           {collectionDetails.nftCollectionName}
         </h1>
-        <h2 className="text-lg text-gray-300 text-center">
+        <h2 className="text-md text-gray-300 text-center">
           {collectionDetails.description}
         </h2>
       </div>
 
-      {/* Right side  */}
-      <div className="flex flex-col flex-1 p-4 lg:p-8">
-        {/* Header */}
-        <header className="flex items-center justify-between">
-          <Link to="/">
-            <h1 className="text-xl font-extralight sm:tex-md lg:text-xl w-56 lg:w-80">
-              The{" "}
-              <span className="font-extrabold underline decoration-pink-600/50">
-                Friendly
-              </span>{" "}
-              NFT marketplace
-            </h1>
-          </Link>
+      <div className="flex flex-1 flex-col p-4 lg:p-8">
+        <header className="flex flex-col items-center justify-center gap-3 sm:gap-0 sm:justify-between sm:flex-row">
+          <MainNavHeader />
           <button
-            className="bg-rose-400 text-white rounded-full text-xs font-bold px-4 py-2 lg:px-5 lg:py-3 lg:text-base"
+            className="bg-rose-400 text-white rounded-full text-xs font-bold w-full sm:w-40 px-4 py-2 lg:px-5 lg:py-3 lg:text-base"
             onClick={onConnectWallet}
           >
-            {address ? "Sign Out" : "Sign In"}
+            {loggedInAddress ? "Sign Out" : "Sign In"}
           </button>
         </header>
 
-        <hr className="my-2 border" />
+        <hr className="my-4 border" />
 
-        {address && (
-          <p className="text-center text-sm text-rose-400">
-            You're logged in with wallet {address.substring(0, 5)}...
-            {address.substring(address.length - 5)}
-          </p>
-        )}
+        <WalletAddress />
 
-        {/* content */}
         <div className="mt-10 flex flex-col flex-1 items-center gap-6 lg:gap-0 lg:justify-center text-center">
           <img
             src={urlFor(collectionDetails.mainImage).url()}
             alt={collectionDetails.title}
             className="w-80 object-cover pb-10 lg:h-40"
           />
-          <h1 className="text-3xl font-bold lg:text-5xl lg:font-extrabold">
+          <h1 className="text-2xl font-bold lg:text-3xl lg:font-bold">
             {collectionDetails.title}
           </h1>
 
-          <p className="pt-5 text-lg text-green-500">13/21 NFT's claimed</p>
+          {loading ? (
+            <ShowLoader text="Loading supply data..." />
+          ) : (
+            <p className="pt-5 text-lg text-green-500">
+              {claimedNFTs?.toString()}/{totalNFTs?.toString()} NFT's claimed
+            </p>
+          )}
         </div>
 
-        {/* mint button */}
-        <button className="my-10 h-16 w-full bg-red-600 text-white rounded-full font-bold">
-          Mint NFT (0.01 ETH)
-        </button>
+        {loggedInAddress && (
+          <button
+            className="my-10 w-full bg-red-600 text-white rounded-full font-bold px-4 py-2 lg:px-5 lg:py-3 disabled:bg-gray-400"
+            disabled={loading || claimedNFTs?.gte(totalNFTs?.toNumber() || 0)}
+            onClick={mintNFT}
+          >
+            {loading ? (
+              "Loading..."
+            ) : claimedNFTs?.gte(totalNFTs?.toNumber() || 0) ? (
+              "Sold Out"
+            ) : (
+              <span className="font-bold">Mint NFT ({priceWithSymbol})</span>
+            )}
+          </button>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
